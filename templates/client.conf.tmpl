@@ -1,0 +1,23 @@
+dev tun
+proto udp
+remote {{ .Addr }} 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+<ca>
+{{ .CACrt }}
+</ca>
+<cert>
+{{ .Crt }}
+</cert>
+<key>
+{{ .Key }}
+</key>
+remote-cert-tls server
+<tls-auth>
+{{ .TLSAuth }}
+</tls-auth>
+key-direction 1
+cipher AES-256-CBC
+verb 3
