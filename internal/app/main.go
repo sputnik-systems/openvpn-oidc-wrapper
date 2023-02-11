@@ -26,6 +26,8 @@ type ConfigValues struct {
 	TLSAuth string
 }
 
+type ctxKey string
+
 var (
 	provider *oidc.Provider
 	config   *oauth2.Config
@@ -131,7 +133,7 @@ func authMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "User email not verified", http.StatusForbidden)
 		}
 
-		ctx := context.WithValue(r.Context(), "email", info.Email)
+		ctx := context.WithValue(r.Context(), ctxKey("email"), info.Email)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 
@@ -167,17 +169,22 @@ func apiConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func revoke(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	name := r.Form.Get("name")
-
-	if err := certs.RevokeClient(name); err != nil {
-		log.Printf("failed to revoke client: %s", err)
-	}
-}
+// func revoke(w http.ResponseWriter, r *http.Request) {
+// 	if err := r.ParseForm(); err != nil {
+// 		log.Printf("failed to parse request: %s", err)
+//
+// 		return
+// 	}
+//
+// 	name := r.Form.Get("name")
+//
+// 	if err := certs.RevokeClient(name); err != nil {
+// 		log.Printf("failed to revoke client: %s", err)
+// 	}
+// }
 
 func getConfig(w http.ResponseWriter, r *http.Request) {
-	name, ok := r.Context().Value("email").(string)
+	name, ok := r.Context().Value(ctxKey("email")).(string)
 	if !ok {
 		http.Error(w, "User email parsing error", http.StatusInternalServerError)
 	}
