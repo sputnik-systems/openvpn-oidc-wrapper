@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.Llongfile)
+
 	if err := app.Execute(); err != nil {
 		log.Fatalln(err)
 	}

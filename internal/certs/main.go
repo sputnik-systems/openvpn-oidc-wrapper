@@ -82,7 +82,8 @@ func getKeyByName(name string) (any, error) {
 		return nil, err
 	}
 
-	return x509.ParsePKCS8PrivateKey(b)
+	// return x509.ParsePKCS8PrivateKey(b)
+	return x509.ParsePKCS1PrivateKey(b)
 }
 
 func GetKeyBytesByName(name string) ([]byte, error) {
@@ -116,6 +117,10 @@ func getCaCrt() (*x509.Certificate, error) {
 func getCrl() (*x509.RevocationList, error) {
 	b, err := getPemBlockBytes(getCrlPath())
 	if err != nil {
+		// if _, err := os.Stat(getCrlPath()); errors.Is(err, os.ErrNotExist) {
+		// 	return &x509.RevocationList{}, nil
+		// }
+
 		return nil, err
 	}
 
@@ -176,10 +181,11 @@ func genKeyByName(name string) error {
 	if err != nil {
 		return err
 	}
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return err
-	}
+	// keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
+	// if err != nil {
+	// 	return err
+	// }
+	keyBytes := x509.MarshalPKCS1PrivateKey(key)
 	keyPEM := new(bytes.Buffer)
 	if err := pem.Encode(keyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
