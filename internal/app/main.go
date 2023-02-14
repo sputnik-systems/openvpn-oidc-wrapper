@@ -56,14 +56,15 @@ func Execute() error {
 		},
 	}
 
-	var oidcURL, oidcClientID, oidcClientSecret, managerListenAddr, managerPublicURL string
+	var oidcURL, oidcClientID, oidcClientSecret, managerListenAddr, managerListenCrt, managerListenKey, managerPublicURL string
 	managerCmd := &cobra.Command{
 		Use:   "manager",
 		Short: "daemon for certificate controlling",
 		Long:  "This daemon run near openvnp service and control user certificates.",
 		Run: func(cmd *cobra.Command, args []string) {
 			certs.Init(certsPathPrefix)
-			manager(oidcURL, oidcClientID, oidcClientSecret, managerListenAddr, managerPublicURL)
+			manager(oidcURL, oidcClientID, oidcClientSecret,
+				managerListenAddr, managerListenCrt, managerListenKey, managerPublicURL)
 		},
 	}
 	managerCmd.PersistentFlags().StringVar(&oidcURL, "oidc.issuer-url", "", "your oidc provider issuer url")
@@ -71,6 +72,8 @@ func Execute() error {
 	managerCmd.PersistentFlags().StringVar(&oidcClientSecret, "oidc.client-secret", "", "your oidc provider client secret")
 	managerCmd.PersistentFlags().StringVar(&managerPublicURL, "manager.public-url", "", "this service public url")
 	managerCmd.PersistentFlags().StringVar(&managerListenAddr, "manager.listen-addr", ":80", "manager listen address (it will be \":443\" if you enable tls)")
+	managerCmd.PersistentFlags().StringVar(&managerListenCrt, "manager.listen-cert", "", "manager listen tls certificate path")
+	managerCmd.PersistentFlags().StringVar(&managerListenKey, "manager.listen-key", "", "manager listen tls certificate key path")
 	managerCmd.PersistentFlags().StringVar(&managerClientConfigTemplatePath, "manager.client-config-template-path", "./templates/client.conf.tmpl", "manager use it for user configs generation")
 
 	rootCmd.PersistentFlags().StringVar(&certsPathPrefix, "root.certs-path-prefix", "/etc/openvpn/easy-rsa/pki", "where certificates should located")
@@ -81,7 +84,7 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-func manager(providerURL, clientID, clientSecret, listenAddr, redirectURL string) {
+func manager(providerURL, clientID, clientSecret, listenAddr, listenCrt, listenKey, redirectURL string) {
 	var err error
 	provider, err = oidc.NewProvider(context.Background(), providerURL)
 	if err != nil {
@@ -97,7 +100,12 @@ func manager(providerURL, clientID, clientSecret, listenAddr, redirectURL string
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth", authHandler)
 	mux.Handle("/", authMiddleware(http.HandlerFunc(apiConfigHandler)))
-	log.Fatal(http.ListenAndServe(listenAddr, mux))
+
+	if listenCrt != "" && listenKey != "" {
+		log.Fatal(http.ListenAndServeTLS(listenAddr, listenCrt, listenKey, mux))
+	} else {
+		log.Fatal(http.ListenAndServe(listenAddr, mux))
+	}
 }
 
 func authMiddleware(next http.Handler) http.Handler {
