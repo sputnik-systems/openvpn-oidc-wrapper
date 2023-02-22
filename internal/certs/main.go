@@ -276,7 +276,7 @@ func genCrtByName(name string) error {
 
 		NotBefore: time.Now(),
 		// should be parameterized
-		NotAfter: time.Now().Add(time.Year),
+		NotAfter: time.Now().Add(24 * time.Hour),
 
 		BasicConstraintsValid: true,
 		IsCA:                  false,
