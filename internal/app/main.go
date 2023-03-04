@@ -102,6 +102,13 @@ func manager(providerURL, clientID, clientSecret, listenAddr, listenCrt, listenK
 	mux.Handle("/", authMiddleware(http.HandlerFunc(apiConfigHandler)))
 
 	if listenCrt != "" && listenKey != "" {
+		go func() {
+			log.Fatal(http.ListenAndServe(":80",
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					http.Redirect(w, r, redirectURL, http.StatusFound)
+				})))
+		}()
+
 		log.Fatal(http.ListenAndServeTLS(listenAddr, listenCrt, listenKey, mux))
 	} else {
 		log.Fatal(http.ListenAndServe(listenAddr, mux))
