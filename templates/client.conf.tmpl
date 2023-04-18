@@ -1,3 +1,4 @@
+client
 dev tun
 proto udp
 remote {{ .Addr }} 1194
@@ -20,4 +21,7 @@ remote-cert-tls server
 </tls-auth>
 key-direction 1
 cipher AES-256-CBC
+data-ciphers AES-256-CBC
+data-ciphers-fallback AES-256-CBC
 verb 3
+explicit-exit-notify 1

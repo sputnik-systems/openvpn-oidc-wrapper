@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -50,9 +52,45 @@ func Execute() error {
 			certs.Init(certsPathPrefix)
 			for _, name := range args {
 				if err := certs.RevokeClient(name); err != nil {
-					log.Printf("failed to revoke [%s] certificate: %s", name, err)
+					log.Fatalf("failed to revoke [%s] certificate: %s", name, err)
 				}
 			}
+		},
+	}
+	listCmd := &cobra.Command{
+		Use:   "list",
+		Short: "cli for listing users certificate",
+		Run: func(cmd *cobra.Command, args []string) {
+			certs.Init(certsPathPrefix)
+			clients, err := certs.ListClients()
+			if err != nil {
+				log.Fatalf("failed to list certificates: %s", err)
+			}
+
+			result, err := json.Marshal(clients)
+			if err != nil {
+				log.Fatalf("failed to serialize result %s", err)
+			}
+
+			fmt.Println(string(result))
+		},
+	}
+	listRevokedCmd := &cobra.Command{
+		Use:   "list-revoked",
+		Short: "cli for listing users certificate",
+		Run: func(cmd *cobra.Command, args []string) {
+			certs.Init(certsPathPrefix)
+			clients, err := certs.ListRevoked()
+			if err != nil {
+				log.Fatalf("failed to list certificates: %s", err)
+			}
+
+			result, err := json.Marshal(clients)
+			if err != nil {
+				log.Fatalf("failed to serialize result %s", err)
+			}
+
+			fmt.Println(string(result))
 		},
 	}
 
@@ -80,6 +118,8 @@ func Execute() error {
 
 	rootCmd.AddCommand(managerCmd)
 	rootCmd.AddCommand(revokeCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(listRevokedCmd)
 
 	return rootCmd.Execute()
 }
