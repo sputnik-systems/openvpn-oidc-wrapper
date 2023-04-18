@@ -400,3 +400,57 @@ func RevokeClient(name string) error {
 
 	return nil
 }
+
+func ListClients() ([]string, error) {
+	prefix := filepath.Join(prefix, "issued")
+	entries, err := os.ReadDir(prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read dir: %s", err)
+	}
+
+	list := make([]string, 0)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			crt, err := getCrtByPath(filepath.Join(prefix, entry.Name()))
+			if err != nil {
+				return nil, err
+			}
+
+			list = append(list, crt.Subject.CommonName)
+		}
+	}
+
+	return list, nil
+}
+
+type Revoked struct {
+	Name         string `json:"name"`
+	CommonName   string `json:"common_name"`
+	SerialNumber int64  `json:"serial_number"`
+}
+
+func ListRevoked() ([]Revoked, error) {
+	prefix := filepath.Join(prefix, "revoked/certs_by_serial")
+	entries, err := os.ReadDir(prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read dir: %s", err)
+	}
+
+	list := make([]Revoked, 0)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			crt, err := getCrtByPath(filepath.Join(prefix, entry.Name()))
+			if err != nil {
+				return nil, err
+			}
+
+			list = append(list, Revoked{
+				Name:         entry.Name(),
+				CommonName:   crt.Subject.CommonName,
+				SerialNumber: crt.SerialNumber.Int64(),
+			})
+		}
+	}
+
+	return list, nil
+}
