@@ -17,6 +17,11 @@ import (
 	"time"
 )
 
+var (
+	ErrCertificateRevoke   = errors.New("failed to revoke certificate")
+	ErrCertificateNotValid = errors.New("certificate not valid")
+)
+
 type Client struct {
 	CommonName string
 	CrtKeyPair
@@ -82,7 +87,6 @@ func getKeyByName(name string) (any, error) {
 		return nil, err
 	}
 
-	// return x509.ParsePKCS8PrivateKey(b)
 	return x509.ParsePKCS1PrivateKey(b)
 }
 
@@ -117,10 +121,6 @@ func getCaCrt() (*x509.Certificate, error) {
 func getCrl() (*x509.RevocationList, error) {
 	b, err := getPemBlockBytes(getCrlPath())
 	if err != nil {
-		// if _, err := os.Stat(getCrlPath()); errors.Is(err, os.ErrNotExist) {
-		// 	return &x509.RevocationList{}, nil
-		// }
-
 		return nil, err
 	}
 
@@ -166,6 +166,16 @@ func GetClient(name string) (*Client, error) {
 		return nil, err
 	}
 
+	// user should be possible to reissue certificate
+	// when it expiration date will coming soon
+	if time.Now().Add(time.Hour*168).Compare(crt.NotAfter) >= 0 {
+		if err := RevokeClient(name); err != nil {
+			return nil, ErrCertificateRevoke
+		}
+
+		return nil, ErrCertificateNotValid
+	}
+
 	return &Client{
 		CommonName: crt.Subject.CommonName,
 		CrtKeyPair: CrtKeyPair{
@@ -176,15 +186,10 @@ func GetClient(name string) (*Client, error) {
 }
 
 func genKeyByName(name string) error {
-	// key, err := rsa.GenerateKey(rand.Reader, 4096)
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
 	}
-	// keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	// if err != nil {
-	// 	return err
-	// }
 	keyBytes := x509.MarshalPKCS1PrivateKey(key)
 	keyPEM := new(bytes.Buffer)
 	if err := pem.Encode(keyPEM, &pem.Block{
@@ -311,6 +316,10 @@ func genCrtByName(name string) error {
 func GenClient(name string) error {
 	_, err := GetClient(name)
 	if err != nil {
+		if err == ErrCertificateRevoke {
+			return err
+		}
+
 		if err := genKeyByName(name); err != nil {
 			return err
 		}
@@ -338,9 +347,9 @@ func RevokeClient(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get client certificate: %w", err)
 	}
-	crl.RevokedCertificates = append(
-		crl.RevokedCertificates,
-		pkix.RevokedCertificate{
+	crl.RevokedCertificateEntries = append(
+		crl.RevokedCertificateEntries,
+		x509.RevocationListEntry{
 			SerialNumber:   crt.SerialNumber,
 			RevocationTime: time.Now(),
 		},

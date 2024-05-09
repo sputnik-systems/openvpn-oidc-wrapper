@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"text/template"
 	"time"
 
@@ -248,7 +249,6 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	// w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.ovpn\"", name))
 	w.Header().Set("Content-Disposition", "attachment; filename=\"config.ovpn\"")
 
 	if err := certs.GenClient(name); err != nil {
@@ -281,7 +281,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	values := ConfigValues{
-		Addr:    "vpn.sputnik.systems",
+		Addr:    strings.Split(r.Host, ":")[0],
 		CACrt:   string(ca),
 		Key:     string(key),
 		Crt:     string(crt),
